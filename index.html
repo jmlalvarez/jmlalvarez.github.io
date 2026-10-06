@@ -261,9 +261,19 @@ footer{border-top:1px solid var(--line);padding-block:28px calc(28px + env(safe-
 .hero h1 .line>span{display:inline-block;animation:lineUp 1s cubic-bezier(.16,1,.3,1) both;will-change:transform}
 .hero h1 .line:first-child>span{animation-delay:.1s}
 .hero h1 .line.thin>span{animation-delay:.22s}
+
+/* text effects: the real text keeps the layout, an overlay animates on top, so nothing reflows */
+.fx{position:relative}
+.fx.run{color:transparent!important}
+.fx .fx-o{position:absolute;left:0;top:0;white-space:pre;color:var(--fx-c);pointer-events:none}
+.hero h1 .fx{--fx-c:var(--fg)}.hero h1 .thin .fx{--fx-c:var(--muted)}
+.role .fx{--fx-c:var(--accent-soft)}
+.sec-label .fx{--fx-c:var(--accent-soft)}
+.caret{display:inline-block;width:.5em;height:1em;margin-left:6px;background:var(--accent);vertical-align:-.12em;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
 @keyframes lineUp{from{transform:translateY(105%)}to{transform:none}}
 .role::before{transform-origin:left;animation:grow .7s .4s cubic-bezier(.16,1,.3,1) both}
-.role-text{display:inline-block;animation:wipe .9s .45s cubic-bezier(.16,1,.3,1) both}
+.role-text{display:inline-block}
 @keyframes grow{from{transform:scaleX(0)}}
 @keyframes wipe{from{clip-path:inset(0 100% 0 0);opacity:.2}to{clip-path:inset(0 0 0 0);opacity:1}}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}}
@@ -436,8 +446,8 @@ section.block,.contact{overflow:hidden;isolation:isolate}
   <div class="wrap hero-grid">
     <div>
       <p class="status mono"><i aria-hidden="true"></i>Currently at&nbsp;<b>Salterra</b></p>
-      <h1 id="hero-title"><span class="line"><span>Jonathan Mark</span></span> <span class="line thin"><span>Luigi Alvarez</span></span></h1>
-      <p class="role"><span class="role-text">Senior Web Designer / Developer</span></p>
+      <h1 id="hero-title"><span class="line"><span class="fx" data-fx="scramble">Jonathan Mark</span></span> <span class="line thin"><span class="fx" data-fx="scramble" data-delay="150">Luigi Alvarez</span></span></h1>
+      <p class="role"><span class="role-text fx" data-fx="type" data-delay="500">Senior Web Designer / Developer</span><i class="caret" aria-hidden="true"></i></p>
       <p class="intro">I design and build <strong>WordPress websites</strong> with Elementor, Divi and Avada. Fast, responsive and easy to maintain.</p>
       <div class="cta">
         <a class="btn btn-primary" href="#projects">View My Work
@@ -464,7 +474,7 @@ section.block,.contact{overflow:hidden;isolation:isolate}
   <div class="sec-bg bg-dots" aria-hidden="true"></div>
   <div class="wrap">
     <div class="sec-head reveal">
-      <p class="sec-label mono">About</p>
+      <p class="sec-label mono"><span class="fx" data-fx="scramble" data-on="view">About</span></p>
       <div><h2 id="about-title">Websites built to perform and made to last.</h2></div>
     </div>
     <div class="about-grid">
@@ -493,7 +503,7 @@ section.block,.contact{overflow:hidden;isolation:isolate}
   <div class="sec-bg bg-streams" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="wrap">
     <div class="sec-head reveal">
-      <p class="sec-label mono">Experience</p>
+      <p class="sec-label mono"><span class="fx" data-fx="scramble" data-on="view">Experience</span></p>
       <div><h2 id="exp-title">Experience</h2>
         <p>Five companies since 2015, all focused on WordPress.</p></div>
     </div>
@@ -580,7 +590,7 @@ section.block,.contact{overflow:hidden;isolation:isolate}
   <div class="sec-bg bg-floor" aria-hidden="true"><span class="floor"></span></div>
   <div class="wrap">
     <div class="sec-head reveal">
-      <p class="sec-label mono">Selected work</p>
+      <p class="sec-label mono"><span class="fx" data-fx="scramble" data-on="view">Selected work</span></p>
       <div><h2 id="proj-title">Selected work</h2>
         <p>Live client websites I have worked on.</p></div>
     </div>
@@ -648,7 +658,7 @@ section.block,.contact{overflow:hidden;isolation:isolate}
   <div class="sec-bg bg-rings" aria-hidden="true"><span class="rings"><i></i><i></i><i></i><b></b></span></div>
   <div class="wrap">
     <div class="sec-head reveal">
-      <p class="sec-label mono">Skills &amp; tools</p>
+      <p class="sec-label mono"><span class="fx" data-fx="scramble" data-on="view">Skills &amp; tools</span></p>
       <div><h2 id="skills-title">Skills</h2></div>
     </div>
     <div class="skills reveal">
@@ -671,7 +681,7 @@ section.block,.contact{overflow:hidden;isolation:isolate}
   <div class="sec-bg bg-sheen" aria-hidden="true"></div>
   <div class="wrap">
     <div class="sec-head reveal">
-      <p class="sec-label mono">What I do</p>
+      <p class="sec-label mono"><span class="fx" data-fx="scramble" data-on="view">What I do</span></p>
       <div><h2 id="svc-title">Services</h2></div>
     </div>
     <div class="services">
@@ -770,6 +780,33 @@ section.block,.contact{overflow:hidden;isolation:isolate}
     const fallback = () => { const s = getSelection(), r = document.createRange(); r.selectNodeContents(b.previousElementSibling.querySelector('.v')); s.removeAllRanges(); s.addRange(r); b.textContent = 'Selected'; setTimeout(() => b.textContent = 'Copy', 1600); };
     try { navigator.clipboard.writeText(b.dataset.copy).then(done, fallback); } catch { fallback(); }
   }));
+
+  /* --- Text effects (scramble / typewriter), ~30fps, overlay-based --- */
+  const GL = '01<>/{}[]#*+=_';
+  const runFx = el => {
+    if (reduce || el.dataset.done) return; el.dataset.done = 1;
+    const text = el.textContent, mode = el.dataset.fx, dur = mode === 'type' ? text.length * 40 : 850;
+    const o = document.createElement('span'); o.className = 'fx-o'; o.setAttribute('aria-hidden', 'true');
+    el.appendChild(o); el.classList.add('run');
+    let start = null, last = 0;
+    const frame = now => {
+      if (start === null) start = now;
+      const p = Math.min(1, (now - start) / dur);
+      if (now - last > 32 || p === 1) {
+        last = now;
+        const n = Math.floor(text.length * p);
+        o.textContent = mode === 'type' ? text.slice(0, n)
+          : text.slice(0, n) + [...text.slice(n)].map(c => c === ' ' ? ' ' : GL[(Math.random() * GL.length) | 0]).join('');
+      }
+      if (p < 1) requestAnimationFrame(frame); else { o.remove(); el.classList.remove('run'); }
+    };
+    requestAnimationFrame(frame);
+  };
+  document.querySelectorAll('.fx:not([data-on])').forEach(el => setTimeout(() => runFx(el), +(el.dataset.delay || 0) + 100));
+  if ('IntersectionObserver' in window) {
+    const fo = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { runFx(e.target); fo.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
+    document.querySelectorAll('.fx[data-on="view"]').forEach(el => fo.observe(el));
+  }
 
   /* --- Timeline draws as you scroll --- */
   const tl = document.querySelector('.timeline');
